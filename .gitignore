@@ -1,0 +1,5 @@
+project/node_modules/
+
+backend/monenv/
+plan/ 
+backend/__pycache__/
