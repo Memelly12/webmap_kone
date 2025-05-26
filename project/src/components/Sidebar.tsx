@@ -3,19 +3,23 @@ import { X, Upload, Eye, EyeOff, Table2, AlertTriangle } from 'lucide-react';
 import { AnalysisModal } from './AnalysisModal';
 import { useMapStore } from '../store/mapStore';
 import { useLotStore } from '../store/analysResultStore';
-
+import { useMapConfigStore } from '../store/mapconfigStore';
+import useAOIStore from '../store/AOIStore';
 interface SidebarProps {
   activeTool: string | null;
   onClose: () => void;
   onShowImportModal: () => void;
   onCapture?: () => Promise<Blob | null>;
+  
 }
 
-export const Sidebar = ({ activeTool, onClose, onShowImportModal, onCapture }: SidebarProps) => {
+export const Sidebar = ({ activeTool, onClose, onShowImportModal, onCapture  }: SidebarProps) => {
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const { layers, toggleLayerVisibility } = useMapStore();
   const { lots, setSelectLot } = useLotStore();
   const [selectedLot, setSelectedLot] = useState<string | null>(null);
+  const { registerPoints, setRegisterPoints, exportCoordinates, setExportCoordinates } = useMapConfigStore();
+  const { coordinates } = useAOIStore();
 
   const renderContent = () => {
     switch (activeTool) {
@@ -59,9 +63,24 @@ export const Sidebar = ({ activeTool, onClose, onShowImportModal, onCapture }: S
                 </p>
               </div>
               <div className="p-4">
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
-                  enregistrer    
+                <button 
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 mb-2"
+                  onClick={() => {
+                    setRegisterPoints(!registerPoints);
+                  }} // Met à jour l'état au clic
+                >
+                  {registerPoints ? 'Desactiver' : 'Activer'}
                 </button>
+                {coordinates.length > 0 && (
+                  <button 
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+                    onClick={() => {
+                      setExportCoordinates(!exportCoordinates);
+                    }}
+                  >
+                    exporter
+                  </button>
+                )}
               </div>
             </div>
 

@@ -18,6 +18,7 @@ import {
 interface LayoutProps {
   children: React.ReactNode;
   onCapture?: () => Promise<Blob | null>;
+  
 }
 
 export const Layout = ({ children, onCapture }: LayoutProps) => {
@@ -32,7 +33,7 @@ export const Layout = ({ children, onCapture }: LayoutProps) => {
     { id: 'basemap', icon: MapIcon, title: 'Fond de carte' },
     { id: 'analysis', icon: LineChart, title: 'Analyse' },
     { id: 'table', icon: Table2, title: 'Table attributaire' },
-    { id: 'imagery', icon: ImageIcon, title: 'Imagerie' },
+    // { id: 'imagery', icon: ImageIcon, title: 'Imagerie' },
     { id: 'capture', icon: Camera, title: 'Capture de carte' },
     { id: 'settings', icon: Settings, title: 'Paramètres' },
     { id: 'info', icon: Info, title: 'Informations' },
@@ -109,7 +110,7 @@ export const Layout = ({ children, onCapture }: LayoutProps) => {
             showMobileMenu ? 'left-14' : 'left-0'
           } md:left-0 h-full`}>
             <Sidebar
-            onCapture={onCapture}
+              onCapture={onCapture}
               activeTool={activeTool}
               onClose={() => {
                 setShowSidebar(false);

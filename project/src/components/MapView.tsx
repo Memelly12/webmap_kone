@@ -15,7 +15,7 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import GeoJSON from 'ol/format/GeoJSON';
 import { Feature } from 'ol';
-import { Geometry } from 'ol/geom';
+import { Geometry, Point } from 'ol/geom';
 import GeoTIFF from 'ol/source/GeoTIFF';
 import html2canvas from 'html2canvas';
 import Style from 'ol/style/Style';
@@ -24,6 +24,11 @@ import Stroke from 'ol/style/Stroke';
 import Text from 'ol/style/Text';
 import { FeatureLike } from 'ol/Feature';
 import { useLotStore } from '../store/analysResultStore';
+import { useMapConfigStore } from '../store/mapconfigStore';
+import CircleStyle from 'ol/style/Circle';
+import useAOIStore from '../store/AOIStore';
+import * as XLSX from 'xlsx';
+import { Coordinate } from '../store/AOIStore';
 
 export const MapView = () => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -31,8 +36,10 @@ export const MapView = () => {
   const mapInstance = useRef<Map | null>(null);
   const [showAttributeTable, setShowAttributeTable] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const { registerPoints, exportCoordinates, setExportCoordinates } = useMapConfigStore();
   const { layers } = useMapStore();
   const { selectedLot } = useLotStore();
+  const { addCoordinate, coordinates } = useAOIStore();
   const blobUrlsRef = useRef<string[]>([]);  // Pour suivre les URLs de blobs et les révoquer plus tard
 
   const captureMap = async () => {
@@ -89,6 +96,8 @@ export const MapView = () => {
       });
     };
 
+  
+
     // Initialiser la carte avec seulement la couche de base OSM
     mapInstance.current = new Map({
       target: mapRef.current,
@@ -96,6 +105,7 @@ export const MapView = () => {
         new TileLayer({
           source: new OSM(),
         }),
+        
       ],
       view: new View({
         center: fromLonLat([-4.0, 5.25]), // Port Bouet, Abidjan
@@ -114,16 +124,40 @@ export const MapView = () => {
     });
 
     mapInstance.current.addControl(geocoder);
+    
+    // 1. Créer une source vectorielle
+    const vectorSource = new VectorSource();
 
+// 2. Créer une couche vectorielle avec un style simple
+    const vectorLayer = new VectorLayer({
+      source: vectorSource,
+      style: new Style({
+        image: new CircleStyle({
+          radius: 6,
+          fill: new Fill({ color: 'red' }),
+          stroke: new Stroke({ color: 'white', width: 2 }),
+        }),
+      }),
+    });
+    mapInstance.current?.addLayer(vectorLayer);
     // Handle map click events
     mapInstance.current.on('click', (evt) => {
+      const coordinates = evt.coordinate;
+
+      if (registerPoints) {
+        const marker = new Feature({
+          geometry: new Point(coordinates), // Créer un nouveau point avec les coordonnées cliquées
+        });
+        vectorSource.addFeature(marker); // Ajoutez le marqueur à la source de vecteur
+        addCoordinate(coordinates[0], coordinates[1]);
+      }
+
       const feature = mapInstance.current?.forEachFeatureAtPixel(
         evt.pixel,
         (feature) => feature
       );
 
       if (feature) {
-        const coordinates = evt.coordinate;
         const properties = feature.getProperties();
         setSelectedFeature(properties);
 
@@ -264,10 +298,38 @@ export const MapView = () => {
         mapInstance.current.setTarget(undefined);
       }
     };
-  }, [layers, selectedLot]);
+  }, [layers, selectedLot, registerPoints]);
+
+  // Fonction pour exporter les coordonnées
+  const exportCoordinatesToExcel = (coordinates:Coordinate[])  => {
+    // Créer un tableau d'objets pour les lignes du fichier Excel
+    const data = coordinates.map(coord => ({
+      'Longitude': coord.longitude,
+      'Latitude': coord.latitude,
+      'ID': coord.id,
+    }));
+
+    // Créer un nouveau classeur
+    const workbook = XLSX.utils.book_new();
+    
+    // Convertir les données en une feuille de calcul
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    
+    // Ajouter la feuille de calcul au classeur
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Coordonnées');
+
+    // Générer le fichier Excel et le télécharger
+    XLSX.writeFile(workbook, 'coordonnees.xlsx');
+  };
+  useEffect(() => {
+    if (exportCoordinates) {
+      exportCoordinatesToExcel(coordinates);
+    }
+    setExportCoordinates(false);
+  }, [exportCoordinates, coordinates]);
 
   return (
-    <Layout onCapture={captureMap}>
+    <Layout onCapture={captureMap} >
       <div className="relative w-full h-full">
         <div ref={mapRef} className="w-full h-full" />
 
